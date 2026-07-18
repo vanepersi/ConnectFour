@@ -7,7 +7,11 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class BoardRenderer {
 
@@ -18,7 +22,8 @@ public final class BoardRenderer {
     }
 
     public Material emptyMaterial() {
-        return material("materials.empty", Material.AIR);
+        // Never default to AIR — that punches holes in solid walls.
+        return material("materials.empty", Material.BLACK_CONCRETE);
     }
 
     public Material winHighlightMaterial() {
@@ -29,18 +34,51 @@ public final class BoardRenderer {
         return team.materialFromConfig(plugin.getConfig());
     }
 
-    public void clear(Arena arena) {
+    /**
+     * Capture the current wall blocks for every cell so clears can restore them.
+     */
+    public BoardSnapshot capture(Arena arena) {
         BoardGeometry geometry = new BoardGeometry(arena);
-        Material empty = emptyMaterial();
+        int blocksPerCell = geometry.blocksPerCell();
+        Material[][][] materials = new Material[geometry.getColumns()][geometry.getRows()][blocksPerCell];
         for (int c = 0; c < geometry.getColumns(); c++) {
             for (int r = 0; r < geometry.getRows(); r++) {
-                paintCell(geometry, c, r, empty);
+                List<Material> cell = new ArrayList<>(blocksPerCell);
+                geometry.forEachBlockInCell(c, r, block -> cell.add(block.getType()));
+                materials[c][r] = cell.toArray(Material[]::new);
             }
         }
+        BoardSnapshot snapshot = new BoardSnapshot(
+                geometry.getColumns(),
+                geometry.getRows(),
+                blocksPerCell,
+                materials
+        );
+        arena.setSnapshot(snapshot);
+        return snapshot;
+    }
+
+    /**
+     * Restore the wall to the captured snapshot. Without a snapshot, only
+     * removes known piece materials (never mass-wipes the wall to AIR).
+     */
+    public void clear(Arena arena) {
+        BoardGeometry geometry = new BoardGeometry(arena);
+        BoardSnapshot snapshot = arena.getSnapshot();
+        if (snapshot != null && snapshot.matches(geometry)) {
+            restoreSnapshot(geometry, snapshot);
+            return;
+        }
+        clearPiecesOnly(geometry);
     }
 
     public void paintCell(Arena arena, int column, int row, Team team) {
-        paintCell(new BoardGeometry(arena), column, row, team == null ? emptyMaterial() : teamMaterial(team));
+        BoardGeometry geometry = new BoardGeometry(arena);
+        if (team == null) {
+            restoreCell(arena, geometry, column, row);
+        } else {
+            paintCell(geometry, column, row, teamMaterial(team));
+        }
     }
 
     public void paintCell(BoardGeometry geometry, int column, int row, Material material) {
@@ -52,7 +90,11 @@ public final class BoardRenderer {
         for (int c = 0; c < geometry.getColumns(); c++) {
             for (int r = 0; r < geometry.getRows(); r++) {
                 Team team = grid[c][r];
-                paintCell(geometry, c, r, team == null ? emptyMaterial() : teamMaterial(team));
+                if (team == null) {
+                    restoreCell(arena, geometry, c, r);
+                } else {
+                    paintCell(geometry, c, r, teamMaterial(team));
+                }
             }
         }
     }
@@ -63,6 +105,66 @@ public final class BoardRenderer {
         for (int[] cell : cells) {
             paintCell(geometry, cell[0], cell[1], highlight);
         }
+    }
+
+    private void clearPiecesOnly(BoardGeometry geometry) {
+        Set<Material> pieceMats = pieceMaterials();
+        Material empty = emptyMaterial();
+        // If empty is AIR, skip replacement — that would re-open holes in a solid wall.
+        if (empty == Material.AIR) {
+            return;
+        }
+        for (int c = 0; c < geometry.getColumns(); c++) {
+            for (int r = 0; r < geometry.getRows(); r++) {
+                geometry.forEachBlockInCell(c, r, block -> {
+                    if (pieceMats.contains(block.getType())) {
+                        setBlock(block, empty);
+                    }
+                });
+            }
+        }
+    }
+
+    private void restoreSnapshot(BoardGeometry geometry, BoardSnapshot snapshot) {
+        for (int c = 0; c < geometry.getColumns(); c++) {
+            for (int r = 0; r < geometry.getRows(); r++) {
+                restoreCell(geometry, snapshot, c, r);
+            }
+        }
+    }
+
+    private void restoreCell(Arena arena, BoardGeometry geometry, int column, int row) {
+        BoardSnapshot snapshot = arena.getSnapshot();
+        if (snapshot != null && snapshot.matches(geometry)) {
+            restoreCell(geometry, snapshot, column, row);
+            return;
+        }
+        Material empty = emptyMaterial();
+        Set<Material> pieceMats = pieceMaterials();
+        geometry.forEachBlockInCell(column, row, block -> {
+            if (pieceMats.contains(block.getType()) && empty != Material.AIR) {
+                setBlock(block, empty);
+            }
+        });
+    }
+
+    private void restoreCell(BoardGeometry geometry, BoardSnapshot snapshot, int column, int row) {
+        Material[] mats = snapshot.materialsFor(column, row);
+        AtomicInteger index = new AtomicInteger(0);
+        geometry.forEachBlockInCell(column, row, block -> {
+            int i = index.getAndIncrement();
+            if (i < mats.length) {
+                setBlock(block, mats[i]);
+            }
+        });
+    }
+
+    private Set<Material> pieceMaterials() {
+        return EnumSet.of(
+                teamMaterial(Team.RED),
+                teamMaterial(Team.YELLOW),
+                winHighlightMaterial()
+        );
     }
 
     private Material material(String path, Material fallback) {

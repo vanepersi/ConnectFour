@@ -73,6 +73,18 @@ public final class BoardGeometry {
         return facing;
     }
 
+    public int getCellWidth() {
+        return cellWidth;
+    }
+
+    public int getCellHeight() {
+        return cellHeight;
+    }
+
+    public int blocksPerCell() {
+        return cellWidth * cellHeight;
+    }
+
     /** Bottom-left block of a cell (column left→right, row bottom→top). */
     public Location cellOrigin(int column, int row) {
         int stepX = cellWidth + columnGap;

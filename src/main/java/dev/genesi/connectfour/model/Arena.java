@@ -1,5 +1,6 @@
 package dev.genesi.connectfour.model;
 
+import dev.genesi.connectfour.board.BoardSnapshot;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -31,6 +32,7 @@ public final class Arena {
     private int columnGap = 0;
     private int rowGap = 0;
     private Double entryFeeOverride;
+    private BoardSnapshot snapshot;
 
     public Arena(String name) {
         this.name = name.toLowerCase(Locale.ROOT);
@@ -199,6 +201,18 @@ public final class Arena {
         this.entryFeeOverride = entryFeeOverride;
     }
 
+    public BoardSnapshot getSnapshot() {
+        return snapshot;
+    }
+
+    public void setSnapshot(BoardSnapshot snapshot) {
+        this.snapshot = snapshot;
+    }
+
+    public boolean hasSnapshot() {
+        return snapshot != null;
+    }
+
     public boolean isReady() {
         return lobby != null && lobby.getWorld() != null
                 && origin != null && origin.getWorld() != null
@@ -242,6 +256,9 @@ public final class Arena {
         if (entryFeeOverride != null) {
             map.put("entry-fee", entryFeeOverride);
         }
+        if (snapshot != null) {
+            map.put("board-snapshot", snapshot.serialize());
+        }
         return map;
     }
 
@@ -281,6 +298,7 @@ public final class Arena {
         if (section.contains("entry-fee")) {
             arena.entryFeeOverride = section.getDouble("entry-fee");
         }
+        arena.snapshot = BoardSnapshot.deserialize(section.getConfigurationSection("board-snapshot"));
         return arena;
     }
 

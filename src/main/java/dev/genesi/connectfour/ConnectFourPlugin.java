@@ -5,6 +5,7 @@ import dev.genesi.connectfour.command.ConnectFourCommand;
 import dev.genesi.connectfour.listener.GameListener;
 import dev.genesi.connectfour.manager.ArenaManager;
 import dev.genesi.connectfour.manager.GameManager;
+import dev.genesi.connectfour.util.PieceItems;
 import dev.genesi.games.GenesiGamePlugin;
 import dev.genesi.games.economy.EconomyService;
 import dev.genesi.games.economy.PointsService;
@@ -17,6 +18,7 @@ public final class ConnectFourPlugin extends GenesiGamePlugin {
     private PointsService pointsService;
     private EconomyService economyService;
     private MessageService messageService;
+    private PieceItems pieceItems;
 
     @Override
     public void onEnable() {
@@ -25,6 +27,7 @@ public final class ConnectFourPlugin extends GenesiGamePlugin {
         this.messageService = new MessageService(this, "&8[&6Connect Four&8] &r");
         this.economyService = new EconomyService(this, "connectfour.bypass.fee");
         this.pointsService = new PointsService(this);
+        this.pieceItems = new PieceItems(this);
         this.arenaManager = new ArenaManager(this);
         this.gameManager = new GameManager(this);
 
@@ -84,5 +87,9 @@ public final class ConnectFourPlugin extends GenesiGamePlugin {
 
     public MessageService getMessageService() {
         return messageService;
+    }
+
+    public PieceItems getPieceItems() {
+        return pieceItems;
     }
 }

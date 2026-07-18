@@ -163,6 +163,7 @@ public final class GameManager {
         PlayerState state = session.getPlayers().remove(player.getUniqueId());
         byPlayer.remove(player.getUniqueId());
         if (state != null) {
+            purgePieces(player);
             restorePlayer(player, state);
         }
 
@@ -233,6 +234,10 @@ public final class GameManager {
         }
         if (state.getTeam() != session.getTurn()) {
             plugin.getMessageService().send(player, "not-your-turn");
+            return true;
+        }
+        if (!plugin.getPieceItems().isPiece(player.getInventory().getItemInMainHand(), state.getTeam())) {
+            plugin.getMessageService().send(player, "need-piece");
             return true;
         }
         if (BoardLogic.isColumnFull(session.getGrid(), column)) {
@@ -330,7 +335,13 @@ public final class GameManager {
     private void beginMatch(GameSession session, Arena arena) {
         session.cancelTasks();
         session.clearGrid();
+        if (!arena.hasSnapshot() && arena.getOrigin() != null) {
+            plugin.getLogger().warning("Arena '" + arena.getName()
+                    + "' has no board snapshot. Run /cfadmin snapshotboard " + arena.getName()
+                    + " after the empty board looks correct.");
+        }
         renderer.clear(arena);
+        givePieces(session);
         session.setState(GameSession.State.START_COUNTDOWN);
         session.setTurn(resolveFirstTurn(session));
 
@@ -361,6 +372,49 @@ public final class GameManager {
                 }
             }
         }, 0L, 20L));
+    }
+
+    private void givePieces(GameSession session) {
+        int amount = plugin.getPieceItems().startingAmount();
+        for (PlayerState state : session.getPlayers().values()) {
+            Player player = Bukkit.getPlayer(state.getUuid());
+            if (player == null || state.getTeam() == null) {
+                continue;
+            }
+            purgePieces(player);
+            ItemStack piece = plugin.getPieceItems().create(state.getTeam(), amount);
+            player.getInventory().setItem(0, piece);
+            player.getInventory().setHeldItemSlot(0);
+            plugin.getMessageService().send(player, "piece-given", Map.of(
+                    "team", state.getTeam().colored(),
+                    "amount", String.valueOf(amount)
+            ));
+        }
+    }
+
+    private void purgePieces(Player player) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            if (plugin.getPieceItems().isPiece(contents[i])) {
+                player.getInventory().setItem(i, null);
+            }
+        }
+        if (plugin.getPieceItems().isPiece(player.getInventory().getItemInOffHand())) {
+            player.getInventory().setItemInOffHand(null);
+        }
+    }
+
+    private void consumePiece(Player player) {
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        if (!plugin.getPieceItems().isPiece(hand)) {
+            return;
+        }
+        int amount = hand.getAmount();
+        if (amount <= 1) {
+            player.getInventory().setItemInMainHand(null);
+        } else {
+            hand.setAmount(amount - 1);
+        }
     }
 
     private Team resolveFirstTurn(GameSession session) {
@@ -430,18 +484,19 @@ public final class GameManager {
         renderer.paintCell(arena, column, row, team);
         session.setAnimating(false);
 
-        for (UUID uuid : session.getPlayers().keySet()) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, 1f, 0.8f);
-            }
-        }
-
         PlayerState mover = session.playerWithTeam(team);
         if (mover != null) {
             Player moverPlayer = Bukkit.getPlayer(mover.getUuid());
             if (moverPlayer != null) {
+                consumePiece(moverPlayer);
                 plugin.getMessageService().send(moverPlayer, "dropped", Map.of("column", String.valueOf(column + 1)));
+            }
+        }
+
+        for (UUID uuid : session.getPlayers().keySet()) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, 1f, 0.8f);
             }
         }
 
@@ -497,6 +552,7 @@ public final class GameManager {
                 byPlayer.remove(state.getUuid());
                 continue;
             }
+            purgePieces(player);
             if (!silent) {
                 if (winner == null) {
                     plugin.getPointsService().addPoints(player, drawPoints);
@@ -550,6 +606,19 @@ public final class GameManager {
             if (player != null) {
                 plugin.getMessageService().send(player, "your-turn");
                 plugin.getMessageService().title(player, "&aYour turn", turn.colored());
+                // Keep a piece in hand if they somehow lost it
+                if (!plugin.getPieceItems().isPiece(player.getInventory().getItemInMainHand(), turn)) {
+                    boolean has = false;
+                    for (ItemStack stack : player.getInventory().getContents()) {
+                        if (plugin.getPieceItems().isPiece(stack, turn)) {
+                            has = true;
+                            break;
+                        }
+                    }
+                    if (!has) {
+                        player.getInventory().addItem(plugin.getPieceItems().create(turn, 1));
+                    }
+                }
             }
         }
         if (other != null && current != null) {

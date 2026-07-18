@@ -30,17 +30,31 @@ win-highlight-ticks: 60
 reset-delay-ticks: 80
 
 # ---------------------------------------------------------------------------
-# Materials — closest Minecraft look to real Connect Four
-# Blue plastic frame is part of your build; plugin only paints the slots.
-# RED/YELLOW_CONCRETE = solid discs (high contrast, no gravity surprises).
-# Empty slots default to AIR so the blue frame holes stay see-through.
+# Materials — wall slots on the board
+# NEVER use AIR for empty on a solid wall — that deletes your build.
+# Prefer capturing the empty board with /cfadmin snapshotboard <arena>
+# so clears restore the exact original blocks.
 # ---------------------------------------------------------------------------
 materials:
-  empty: AIR
+  empty: BLACK_CONCRETE
   red: RED_CONCRETE
   yellow: YELLOW_CONCRETE
   # Temporary flash material on a winning line
   win-highlight: GLOWSTONE
+
+# Fake disc items given to players (cannot be placed as blocks)
+pieces:
+  starting-amount: 21
+  red:
+    material: RED_CONCRETE
+    display-name: "&cRed Disc"
+    lore:
+      - "&7Hold this and click a column to drop."
+  yellow:
+    material: YELLOW_CONCRETE
+    display-name: "&eYellow Disc"
+    lore:
+      - "&7Hold this and click a column to drop."
 
 # Default cell size when creating arenas (blocks per disc). Giant boards use 2–3.
 board-defaults:
@@ -78,8 +92,10 @@ messages:
   player-left: "&e{player} &7left the lobby."
   countdown: "&e{seconds}"
   go: "&a&lGO!"
-  your-turn: "&aYour turn! Click a column."
+  your-turn: "&aYour turn! Hold your disc and click a column."
   opponent-turn: "&7Waiting for &e{player}&7..."
+  need-piece: "&cHold your colored disc to drop."
+  piece-given: "&aYou received &f{amount}x {team} &adiscs. Hold one and click a column."
   column-full: "&cThat column is full."
   not-your-turn: "&cIt's not your turn."
   dropped: "&aDropped in column &f{column}&a."
@@ -109,6 +125,7 @@ messages:
   bind-done: "&aBound all 7 column buttons for &e{arena}&a."
   bind-cancelled: "&eColumn bind cancelled."
   cell-size-set: "&aCell size for &e{arena}&a set to &f{width}x{height}&a (gaps c={cg} r={rg})."
+  snapshot-saved: "&aSaved empty-board snapshot for &e{arena}&a. Clears will restore these blocks."
   board-cleared: "&aCleared board for &e{arena}&a."
   fee-set: "&aEntry fee for &e{arena}&a set to &e{fee}&a."
   reloaded: "&aConfiguration reloaded."

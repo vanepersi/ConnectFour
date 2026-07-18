@@ -6,16 +6,16 @@ Data folder: `plugins/GenesiCore/games/ConnectFour/` (via GenesiGamesApi).
 
 ## Materials
 
-Closest Minecraft stand-in for real Connect Four:
-
 | Role | Material | Why |
 |------|----------|-----|
-| Empty slot | `AIR` | Keeps blue frame holes see-through |
-| Red disc | `RED_CONCRETE` | Solid, high-contrast “plastic” disc |
-| Yellow disc | `YELLOW_CONCRETE` | Matching yellow disc |
-| Win flash | `GLOWSTONE` | Highlights the four-in-a-row |
+| Empty slot (fallback) | `BLACK_CONCRETE` | Safe fill — **never AIR** (that deletes walls) |
+| Red disc | `RED_CONCRETE` | Solid red piece |
+| Yellow disc | `YELLOW_CONCRETE` | Solid yellow piece |
+| Win flash | `GLOWSTONE` | Highlights the four |
 
-Your build supplies the blue frame; the plugin only paints the playable cells. Override under `materials:` in `config.yml`.
+**Important:** After the empty board looks right, run `/cfadmin snapshotboard <arena>` so clears restore your exact wall blocks. `setorigin` / `setfacing` / `setcellsize` also auto-snapshot.
+
+Players get fake **Red/Yellow Disc** items (cannot place as blocks). Hold your disc and click a column to drop.
 
 ## Build
 
@@ -37,12 +37,14 @@ Point the plugin at your existing wall board (bottom-left empty cell = column 1,
 /cfadmin setfacing lounge          # face the board (or NORTH/SOUTH/EAST/WEST)
 /cfadmin setjoin lounge yellow     # look at yellow join block
 /cfadmin setjoin lounge red        # look at red join block
+/cfadmin snapshotboard lounge      # REQUIRED after empty board looks correct
 ```
 
 Giant discs (e.g. 2×2 cells with a 1-block gap):
 
 ```
 /cfadmin setcellsize lounge 2 2 1 1
+/cfadmin snapshotboard lounge      # re-snapshot after size change
 ```
 
 Optional column buttons (left→right). If unset, players click the board column itself:

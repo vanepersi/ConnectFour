@@ -9,9 +9,14 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
 import java.util.Optional;
@@ -71,7 +76,6 @@ public final class GameListener implements Listener {
 
         Optional<Arena> columnArena = plugin.getArenaManager().findByColumnButton(block);
         if (columnArena.isEmpty()) {
-            // Also allow clicking the board itself while playing
             var sessionOpt = plugin.getGameManager().getByPlayer(player.getUniqueId());
             if (sessionOpt.isPresent()) {
                 Optional<Arena> playing = plugin.getArenaManager().get(sessionOpt.get().getArenaName());
@@ -91,6 +95,56 @@ public final class GameListener implements Listener {
         int column = arena.findColumnButton(block);
         if (column >= 0) {
             plugin.getGameManager().handleColumnClick(player, arena, column);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent event) {
+        if (plugin.getPieceItems().isPiece(event.getItemInHand())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDrop(PlayerDropItemEvent event) {
+        if (plugin.getPieceItems().isPiece(event.getItemDrop().getItemStack())
+                && plugin.getGameManager().getByPlayer(event.getPlayer().getUniqueId()).isPresent()) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (plugin.getGameManager().getByPlayer(player.getUniqueId()).isEmpty()) {
+            return;
+        }
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if (plugin.getPieceItems().isPiece(current) || plugin.getPieceItems().isPiece(cursor)) {
+            // Allow hotbar swaps within player inventory only
+            if (event.getClickedInventory() != null
+                    && event.getClickedInventory().equals(player.getInventory())
+                    && event.getView().getTopInventory() != player.getInventory()) {
+                // clicking into chest/etc with piece
+                if (plugin.getPieceItems().isPiece(current) || plugin.getPieceItems().isPiece(cursor)) {
+                    event.setCancelled(true);
+                }
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        if (plugin.getPieceItems().isPiece(event.getItem().getItemStack())
+                && plugin.getGameManager().getByPlayer(player.getUniqueId()).isEmpty()) {
+            event.setCancelled(true);
+            event.getItem().remove();
         }
     }
 

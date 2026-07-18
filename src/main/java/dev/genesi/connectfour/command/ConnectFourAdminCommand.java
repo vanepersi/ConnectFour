@@ -92,6 +92,7 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                     return true;
                 }
                 arena.setOrigin(target.getLocation());
+                trySnapshot(arena, sender);
                 plugin.getArenaManager().save();
                 plugin.getMessageService().send(sender, "origin-set", Map.of("arena", arena.getName()));
             }
@@ -119,6 +120,7 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                     return true;
                 }
                 arena.setFacing(face);
+                trySnapshot(arena, sender);
                 plugin.getArenaManager().save();
                 plugin.getMessageService().send(sender, "facing-set", Map.of("arena", arena.getName(), "facing", face.name()));
             }
@@ -220,6 +222,7 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                     return true;
                 }
                 plugin.getArenaManager().save();
+                trySnapshot(arena, sender);
                 plugin.getMessageService().send(sender, "cell-size-set", Map.of(
                         "arena", arena.getName(),
                         "width", String.valueOf(arena.getCellWidth()),
@@ -227,6 +230,19 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                         "cg", String.valueOf(arena.getColumnGap()),
                         "rg", String.valueOf(arena.getRowGap())
                 ));
+            }
+            case "snapshotboard" -> {
+                Arena arena = requireArena(sender, args, 1);
+                if (arena == null) {
+                    return true;
+                }
+                if (arena.getOrigin() == null || arena.getOrigin().getWorld() == null) {
+                    plugin.getMessageService().send(sender, "arena-not-ready", Map.of("arena", arena.getName()));
+                    return true;
+                }
+                plugin.getGameManager().getRenderer().capture(arena);
+                plugin.getArenaManager().save();
+                plugin.getMessageService().send(sender, "snapshot-saved", Map.of("arena", arena.getName()));
             }
             case "clearboard" -> {
                 Arena arena = requireArena(sender, args, 1);
@@ -236,6 +252,12 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                 if (arena.getOrigin() == null) {
                     plugin.getMessageService().send(sender, "arena-not-ready", Map.of("arena", arena.getName()));
                     return true;
+                }
+                if (!arena.hasSnapshot()) {
+                    sender.sendMessage(plugin.getMessageService().component(
+                            "&eNo snapshot yet — capturing current board first, then clearing pieces only if needed."));
+                    plugin.getGameManager().getRenderer().capture(arena);
+                    plugin.getArenaManager().save();
                 }
                 plugin.getGameManager().getRenderer().clear(arena);
                 plugin.getMessageService().send(sender, "board-cleared", Map.of("arena", arena.getName()));
@@ -353,6 +375,18 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
         }
     }
 
+    private void trySnapshot(Arena arena, CommandSender sender) {
+        if (arena.getOrigin() == null || arena.getOrigin().getWorld() == null) {
+            return;
+        }
+        try {
+            plugin.getGameManager().getRenderer().capture(arena);
+            plugin.getMessageService().send(sender, "snapshot-saved", Map.of("arena", arena.getName()));
+        } catch (IllegalArgumentException ex) {
+            sender.sendMessage(plugin.getMessageService().component("&cCould not snapshot board: " + ex.getMessage()));
+        }
+    }
+
     private Player requirePlayer(CommandSender sender) {
         if (sender instanceof Player player) {
             return player;
@@ -396,6 +430,7 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setfacing <arena> [N/S/E/W] &7- board faces players"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setjoin <arena> <red|yellow> &7- look at join block"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setcellsize <arena> <w> <h> [cg] [rg] &7- giant discs"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin snapshotboard <arena> &7- save empty wall state (important!)"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin bindcolumns <arena> &7- optional 7 column buttons"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin clearboard <arena>"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin list|reload|forcestart|forcestop"));
@@ -409,14 +444,14 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
         if (args.length == 1) {
             return filter(args[0], Arrays.asList(
                     "create", "delete", "setlobby", "setorigin", "setfacing", "setjoin",
-                    "setcolumn", "bindcolumns", "setcellsize", "clearboard", "setfee",
+                    "setcolumn", "bindcolumns", "setcellsize", "snapshotboard", "clearboard", "setfee",
                     "forcestart", "forcestop", "reload", "points", "list", "help"
             ));
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase(Locale.ROOT);
             if (List.of("delete", "setlobby", "setorigin", "setfacing", "setjoin", "setcolumn",
-                    "bindcolumns", "setcellsize", "clearboard", "setfee", "forcestart", "forcestop").contains(sub)) {
+                    "bindcolumns", "setcellsize", "snapshotboard", "clearboard", "setfee", "forcestart", "forcestop").contains(sub)) {
                 return filter(args[1], plugin.getArenaManager().all().stream().map(Arena::getName).toList());
             }
             if (sub.equals("points")) {
