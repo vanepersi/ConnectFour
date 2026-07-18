@@ -328,7 +328,12 @@ public final class GameManager {
                 beginMatch(session, arena);
                 return;
             }
-            broadcast(session, "lobby-countdown", Map.of("seconds", String.valueOf(left)), null);
+            for (UUID uuid : session.getPlayers().keySet()) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null) {
+                    plugin.getMessageService().countdownTitle(player, left, "&7Starting soon...");
+                }
+            }
         }, 0L, 20L));
     }
 
@@ -363,11 +368,10 @@ public final class GameManager {
                 notifyTurn(session);
                 return;
             }
-            broadcast(session, "countdown", Map.of("seconds", String.valueOf(left)), null);
             for (UUID uuid : session.getPlayers().keySet()) {
                 Player player = Bukkit.getPlayer(uuid);
                 if (player != null) {
-                    plugin.getMessageService().title(player, "&e" + left, "");
+                    plugin.getMessageService().countdownTitle(player, left, "&7Get ready...");
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1f, 1f);
                 }
             }
@@ -446,28 +450,30 @@ public final class GameManager {
 
         session.setAnimating(true);
         session.setState(GameSession.State.ANIMATING);
-        int ticksPerRow = Math.max(0, plugin.getConfig().getInt("drop-ticks-per-row", 2));
+        int ticksPerRow = Math.max(1, plugin.getConfig().getInt("drop-ticks-per-row", 3));
         int topRow = arena.getRows() - 1;
 
-        if (ticksPerRow == 0 || topRow <= targetRow) {
-            finishDrop(session, arena, column, targetRow, team);
-            return;
-        }
-
-        // Animate from the top empty visual row down to the landing slot.
+        // Always run a visible fall from the top of the column down to the landing slot.
         AtomicInteger visualRow = new AtomicInteger(topRow);
         var task = new org.bukkit.scheduler.BukkitRunnable() {
             @Override
             public void run() {
+                if (!byArena.containsKey(session.getArenaName())) {
+                    cancel();
+                    return;
+                }
                 int row = visualRow.getAndDecrement();
                 if (row < topRow) {
-                    renderer.paintCell(arena, column, row + 1, null);
+                    // Only clear the ghost if that cell is still empty in game state
+                    if (session.getGrid()[column][row + 1] == null) {
+                        renderer.paintCell(arena, column, row + 1, null);
+                    }
                 }
                 renderer.paintCell(arena, column, row, team);
                 for (UUID uuid : session.getPlayers().keySet()) {
                     Player player = Bukkit.getPlayer(uuid);
                     if (player != null) {
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 0.35f, 1.35f);
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 0.45f, 1.2f + (row * 0.05f));
                     }
                 }
                 if (row <= targetRow) {
@@ -689,13 +695,15 @@ public final class GameManager {
         for (PotionEffect effect : player.getActivePotionEffects()) {
             player.removePotionEffect(effect.getType());
         }
-        player.setGameMode(GameMode.ADVENTURE);
+        player.setGameMode(GameMode.SURVIVAL);
         player.setFoodLevel(20);
         player.setSaturation(20f);
         var maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
         if (maxHealth != null) {
             player.setHealth(Math.min(player.getHealth(), maxHealth.getValue()));
         }
+        player.setAllowFlight(false);
+        player.setFlying(false);
     }
 
     private void restorePlayer(Player player, PlayerState state) {

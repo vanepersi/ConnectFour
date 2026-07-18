@@ -3,8 +3,10 @@ package dev.genesi.connectfour.board;
 import dev.genesi.connectfour.ConnectFourPlugin;
 import dev.genesi.connectfour.model.Arena;
 import dev.genesi.connectfour.model.Team;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
@@ -22,7 +24,6 @@ public final class BoardRenderer {
     }
 
     public Material emptyMaterial() {
-        // Never default to AIR — that punches holes in solid walls.
         return material("materials.empty", Material.BLACK_CONCRETE);
     }
 
@@ -34,9 +35,6 @@ public final class BoardRenderer {
         return team.materialFromConfig(plugin.getConfig());
     }
 
-    /**
-     * Capture the current wall blocks for every cell so clears can restore them.
-     */
     public BoardSnapshot capture(Arena arena) {
         BoardGeometry geometry = new BoardGeometry(arena);
         int blocksPerCell = geometry.blocksPerCell();
@@ -58,10 +56,6 @@ public final class BoardRenderer {
         return snapshot;
     }
 
-    /**
-     * Restore the wall to the captured snapshot. Without a snapshot, only
-     * removes known piece materials (never mass-wipes the wall to AIR).
-     */
     public void clear(Arena arena) {
         BoardGeometry geometry = new BoardGeometry(arena);
         BoardSnapshot snapshot = arena.getSnapshot();
@@ -107,10 +101,56 @@ public final class BoardRenderer {
         }
     }
 
+    /**
+     * Temporarily paints the full grid so admins can verify origin + facing.
+     * Restores the snapshot (or previous blocks) after {@code ticks}.
+     */
+    public void preview(Arena arena, long ticks) {
+        if (!arena.hasSnapshot()) {
+            capture(arena);
+        }
+        BoardGeometry geometry = new BoardGeometry(arena);
+        Material marker = Material.YELLOW_STAINED_GLASS;
+        for (int c = 0; c < geometry.getColumns(); c++) {
+            for (int r = 0; r < geometry.getRows(); r++) {
+                paintCell(geometry, c, r, marker);
+            }
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clear(arena), Math.max(20L, ticks));
+    }
+
+    /** Paint one test disc at the bottom of a column, then clear after a few seconds. */
+    public void testDrop(Arena arena, int column, Team team, long ticks) {
+        if (!arena.hasSnapshot()) {
+            capture(arena);
+        }
+        BoardGeometry geometry = new BoardGeometry(arena);
+        if (column < 0 || column >= geometry.getColumns()) {
+            return;
+        }
+        // Animate a quick fall for the admin test
+        int top = geometry.getRows() - 1;
+        AtomicInteger row = new AtomicInteger(top);
+        var task = new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                int r = row.getAndDecrement();
+                if (r < top) {
+                    paintCell(arena, column, r + 1, null);
+                }
+                paintCell(arena, column, r, team);
+                if (r <= 0) {
+                    cancel();
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> clear(arena), Math.max(40L, ticks));
+                }
+            }
+        };
+        task.runTaskTimer(plugin, 0L, 3L);
+    }
+
     private void clearPiecesOnly(BoardGeometry geometry) {
         Set<Material> pieceMats = pieceMaterials();
         Material empty = emptyMaterial();
-        // If empty is AIR, skip replacement — that would re-open holes in a solid wall.
         if (empty == Material.AIR) {
             return;
         }
@@ -160,11 +200,12 @@ public final class BoardRenderer {
     }
 
     private Set<Material> pieceMaterials() {
-        return EnumSet.of(
-                teamMaterial(Team.RED),
-                teamMaterial(Team.YELLOW),
-                winHighlightMaterial()
-        );
+        Set<Material> set = EnumSet.noneOf(Material.class);
+        set.add(teamMaterial(Team.RED));
+        set.add(teamMaterial(Team.YELLOW));
+        set.add(winHighlightMaterial());
+        set.add(Material.YELLOW_STAINED_GLASS);
+        return set;
     }
 
     private Material material(String path, Material fallback) {
@@ -178,8 +219,10 @@ public final class BoardRenderer {
     }
 
     private static void setBlock(Block block, Material material) {
-        if (block.getType() != material) {
-            block.setType(material, false);
+        BlockData data = material.createBlockData();
+        if (!block.getBlockData().matches(data)) {
+            // applyPhysics=false keeps the wall stable; clients still receive the change
+            block.setBlockData(data, false);
         }
     }
 }

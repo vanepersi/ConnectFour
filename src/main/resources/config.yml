@@ -20,8 +20,8 @@ first-turn: yellow
 # Return players to lobby when the round ends
 teleport-on-end: true
 
-# Drop animation: ticks between each row as the disc falls (0 = instant)
-drop-ticks-per-row: 2
+# Drop animation: ticks between each row as the disc falls (higher = slower)
+drop-ticks-per-row: 3
 
 # How long winning discs flash before the board resets (ticks)
 win-highlight-ticks: 60
@@ -126,6 +126,8 @@ messages:
   bind-cancelled: "&eColumn bind cancelled."
   cell-size-set: "&aCell size for &e{arena}&a set to &f{width}x{height}&a (gaps c={cg} r={rg})."
   snapshot-saved: "&aSaved empty-board snapshot for &e{arena}&a. Clears will restore these blocks."
+  preview-started: "&ePreviewing full 7×6 grid on &e{arena}&e with yellow glass (auto-restores)."
+  testdrop-started: "&aTest-dropping &f{team}&a in column &f{column}&a on &e{arena}&a."
   board-cleared: "&aCleared board for &e{arena}&a."
   fee-set: "&aEntry fee for &e{arena}&a set to &e{fee}&a."
   reloaded: "&aConfiguration reloaded."

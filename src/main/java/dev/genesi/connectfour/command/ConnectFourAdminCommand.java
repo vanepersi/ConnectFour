@@ -244,6 +244,54 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
                 plugin.getArenaManager().save();
                 plugin.getMessageService().send(sender, "snapshot-saved", Map.of("arena", arena.getName()));
             }
+            case "preview" -> {
+                Arena arena = requireArena(sender, args, 1);
+                if (arena == null) {
+                    return true;
+                }
+                if (arena.getOrigin() == null) {
+                    plugin.getMessageService().send(sender, "arena-not-ready", Map.of("arena", arena.getName()));
+                    return true;
+                }
+                plugin.getGameManager().getRenderer().preview(arena, 100L);
+                plugin.getMessageService().send(sender, "preview-started", Map.of("arena", arena.getName()));
+            }
+            case "testdrop" -> {
+                Arena arena = requireArena(sender, args, 1);
+                if (arena == null) {
+                    return true;
+                }
+                if (arena.getOrigin() == null) {
+                    plugin.getMessageService().send(sender, "arena-not-ready", Map.of("arena", arena.getName()));
+                    return true;
+                }
+                int column = 0;
+                if (args.length >= 3) {
+                    try {
+                        column = Integer.parseInt(args[2]) - 1;
+                    } catch (NumberFormatException ex) {
+                        sender.sendMessage(plugin.getMessageService().component("&cColumn must be 1-7."));
+                        return true;
+                    }
+                }
+                Team team = Team.YELLOW;
+                if (args.length >= 4) {
+                    Team parsed = Team.parse(args[3]);
+                    if (parsed != null) {
+                        team = parsed;
+                    }
+                }
+                if (column < 0 || column >= arena.getColumns()) {
+                    sender.sendMessage(plugin.getMessageService().component("&cColumn must be 1-" + arena.getColumns() + "."));
+                    return true;
+                }
+                plugin.getGameManager().getRenderer().testDrop(arena, column, team, 80L);
+                plugin.getMessageService().send(sender, "testdrop-started", Map.of(
+                        "arena", arena.getName(),
+                        "column", String.valueOf(column + 1),
+                        "team", team.colored()
+                ));
+            }
             case "clearboard" -> {
                 Arena arena = requireArena(sender, args, 1);
                 if (arena == null) {
@@ -425,12 +473,13 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(plugin.getMessageService().component("&6Connect Four Admin"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin create <arena>"));
-        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setlobby <arena>"));
-        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setorigin <arena> &7- look at bottom-left empty cell"));
-        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setfacing <arena> [N/S/E/W] &7- board faces players"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setorigin <arena> &7- look at BOTTOM-LEFT empty cell only"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setfacing <arena> [N/S/E/W] &7- stand facing the board"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setjoin <arena> <red|yellow> &7- look at join block"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin setcellsize <arena> <w> <h> [cg] [rg] &7- giant discs"));
-        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin snapshotboard <arena> &7- save empty wall state (important!)"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin snapshotboard <arena> &7- save empty wall state"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin preview <arena> &7- flash yellow glass over full 7×6 grid"));
+        sender.sendMessage(plugin.getMessageService().component("&e/cfadmin testdrop <arena> [col] [red|yellow] &7- animate a test disc"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin bindcolumns <arena> &7- optional 7 column buttons"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin clearboard <arena>"));
         sender.sendMessage(plugin.getMessageService().component("&e/cfadmin list|reload|forcestart|forcestop"));
@@ -444,14 +493,15 @@ public final class ConnectFourAdminCommand implements CommandExecutor, TabComple
         if (args.length == 1) {
             return filter(args[0], Arrays.asList(
                     "create", "delete", "setlobby", "setorigin", "setfacing", "setjoin",
-                    "setcolumn", "bindcolumns", "setcellsize", "snapshotboard", "clearboard", "setfee",
-                    "forcestart", "forcestop", "reload", "points", "list", "help"
+                    "setcolumn", "bindcolumns", "setcellsize", "snapshotboard", "preview", "testdrop",
+                    "clearboard", "setfee", "forcestart", "forcestop", "reload", "points", "list", "help"
             ));
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase(Locale.ROOT);
             if (List.of("delete", "setlobby", "setorigin", "setfacing", "setjoin", "setcolumn",
-                    "bindcolumns", "setcellsize", "snapshotboard", "clearboard", "setfee", "forcestart", "forcestop").contains(sub)) {
+                    "bindcolumns", "setcellsize", "snapshotboard", "preview", "testdrop",
+                    "clearboard", "setfee", "forcestart", "forcestop").contains(sub)) {
                 return filter(args[1], plugin.getArenaManager().all().stream().map(Arena::getName).toList());
             }
             if (sub.equals("points")) {

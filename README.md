@@ -13,9 +13,18 @@ Data folder: `plugins/GenesiCore/games/ConnectFour/` (via GenesiGamesApi).
 | Yellow disc | `YELLOW_CONCRETE` | Solid yellow piece |
 | Win flash | `GLOWSTONE` | Highlights the four |
 
-**Important:** After the empty board looks right, run `/cfadmin snapshotboard <arena>` so clears restore your exact wall blocks. `setorigin` / `setfacing` / `setcellsize` also auto-snapshot.
+## How the grid works
 
-Players get fake **Red/Yellow Disc** items (cannot place as blocks). Hold your disc and click a column to drop.
+You only set **one corner**: the bottom-left empty cell (`setorigin`).  
+The plugin maps the rest as a **7 columns × 6 rows** grid from that point (right + up, based on `setfacing`).
+
+Verify with:
+
+```
+/cfadmin preview lounge          # flashes yellow glass on all 42 slots
+/cfadmin testdrop lounge 4 yellow  # animates a disc falling in column 4
+```
+
 
 ## Build
 
