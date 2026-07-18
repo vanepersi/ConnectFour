@@ -1,0 +1,33 @@
+name: ConnectFour
+version: '${version}'
+main: dev.genesi.connectfour.ConnectFourPlugin
+api-version: '26.1'
+authors: [Genesi]
+description: Wall-board Connect Four — red vs yellow, click-to-join for Paper 26.1.2+.
+depend: [GenesiGamesApi]
+softdepend: [Vault, GenesiCore]
+
+commands:
+  connectfour:
+    description: Join or leave a Connect Four game.
+    usage: /connectfour <join|leave|start|points|arenas|info|help>
+    aliases: [cf, c4, connect4]
+  connectfouradmin:
+    description: Admin setup and control for Connect Four arenas.
+    usage: /connectfouradmin <subcommand>
+    aliases: [cfadmin, c4admin, cfa]
+    permission: connectfour.admin
+
+permissions:
+  connectfour.use:
+    description: Join and play Connect Four arenas.
+    default: true
+  connectfour.points:
+    description: View your arcade points balance.
+    default: true
+  connectfour.admin:
+    description: Manage arenas, boards, and force control.
+    default: op
+  connectfour.bypass.fee:
+    description: Join without paying the entry fee.
+    default: false

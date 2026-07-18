@@ -1,0 +1,119 @@
+# Connect Four — giant wall board, red vs yellow
+# Classic grid: 7 columns × 6 rows. Data folder: plugins/GenesiCore/games/ConnectFour/
+
+# Lobby countdown once both seats are filled (seconds)
+lobby-countdown-seconds: 5
+
+# Pre-game countdown after both players are ready (seconds)
+start-countdown-seconds: 3
+
+# Optional Vault entry fee charged on join
+entry-fee: 0.0
+
+# Arcade points (stored in points.yml under GenesiCore/games/ConnectFour/)
+points-win: 3
+points-draw: 1
+
+# Who goes first: yellow | red | random | first-join
+first-turn: yellow
+
+# Return players to lobby when the round ends
+teleport-on-end: true
+
+# Drop animation: ticks between each row as the disc falls (0 = instant)
+drop-ticks-per-row: 2
+
+# How long winning discs flash before the board resets (ticks)
+win-highlight-ticks: 60
+
+# Reset board delay after a finished game (ticks)
+reset-delay-ticks: 80
+
+# ---------------------------------------------------------------------------
+# Materials — closest Minecraft look to real Connect Four
+# Blue plastic frame is part of your build; plugin only paints the slots.
+# RED/YELLOW_CONCRETE = solid discs (high contrast, no gravity surprises).
+# Empty slots default to AIR so the blue frame holes stay see-through.
+# ---------------------------------------------------------------------------
+materials:
+  empty: AIR
+  red: RED_CONCRETE
+  yellow: YELLOW_CONCRETE
+  # Temporary flash material on a winning line
+  win-highlight: GLOWSTONE
+
+# Default cell size when creating arenas (blocks per disc). Giant boards use 2–3.
+board-defaults:
+  columns: 7
+  rows: 6
+  cell-width: 1
+  cell-height: 1
+  # Extra air/blocks between cells (0 = adjacent)
+  column-gap: 0
+  row-gap: 0
+
+# Arcade points rewards
+reward:
+  deposit-to-vault: false
+  # Placeholders: {player} {uuid} {points} {arena} {result}
+  commands: []
+
+action-bar: "&6Connect Four &8| &f{turn}'s turn &8| &7You are &f{team}"
+
+messages:
+  prefix: "&8[&6Connect Four&8] &r"
+  no-permission: "&cYou don't have permission."
+  players-only: "&cOnly players can use this command."
+  arena-not-found: "&cArena &e{arena}&c was not found."
+  arena-not-ready: "&cArena &e{arena}&c needs lobby, board origin, facing, and red/yellow join blocks."
+  arena-busy: "&cArena &e{arena}&c is already in a game."
+  arena-full: "&cArena &e{arena}&c already has 2 players."
+  seat-taken: "&cThe &f{team}&c seat is already taken."
+  already-playing: "&cYou are already in a Connect Four game."
+  not-playing: "&cYou are not in a Connect Four game."
+  joined-waiting: "&aJoined &e{arena}&a as &f{team}&a (&f{count}/2&a)."
+  lobby-countdown: "&eGame starts in &f{seconds}&e..."
+  need-more-players: "&cNeed both red and yellow to start."
+  left: "&eYou left Connect Four."
+  player-left: "&e{player} &7left the lobby."
+  countdown: "&e{seconds}"
+  go: "&a&lGO!"
+  your-turn: "&aYour turn! Click a column."
+  opponent-turn: "&7Waiting for &e{player}&7..."
+  column-full: "&cThat column is full."
+  not-your-turn: "&cIt's not your turn."
+  dropped: "&aDropped in column &f{column}&a."
+  win: "&a{player} &f({team}) &awins Connect Four!"
+  draw: "&eIt's a draw — board is full!"
+  you-win: "&aYou win! &e+{points} &apoints"
+  you-draw: "&eDraw. &7+{points} points"
+  you-lose: "&cYou lost. Better luck next time!"
+  game-over: "&eConnect Four over! Winner: &f{winner}"
+  opponent-quit: "&e{player} &7left — you win by default!"
+  points-self: "&7Arcade points: &e{points}"
+  points-other: "&e{player}&7 has &e{points}&7 arcade points."
+  points-added: "&aAdded &e{amount}&a points to &e{player}&a. New balance: &e{points}"
+  points-removed: "&eRemoved &e{amount}&e points from &e{player}&e. New balance: &e{points}"
+  points-set: "&aSet &e{player}&a's points to &e{points}"
+  redeem-success: "&aRedeemed &e{amount}&a points from &e{player}&a. Remaining: &e{points}"
+  not-enough-points: "&c{player} only has &e{points}&c points."
+  arena-created: "&aCreated arena &e{arena}&a."
+  arena-deleted: "&aDeleted arena &e{arena}&a."
+  lobby-set: "&aSet lobby for &e{arena}&a."
+  origin-set: "&aSet board origin (bottom-left cell) for &e{arena}&a."
+  facing-set: "&aSet board facing to &e{facing}&a for &e{arena}&a."
+  join-set: "&aSet &f{team}&a join block for &e{arena}&a."
+  column-set: "&aSet column &e#{column}&a click block for &e{arena}&a."
+  bind-start: "&aClick 7 column buttons (left→right) for &e{arena}&a. Sneak+click to cancel."
+  bind-progress: "&aBound column &e#{column}&a/7."
+  bind-done: "&aBound all 7 column buttons for &e{arena}&a."
+  bind-cancelled: "&eColumn bind cancelled."
+  cell-size-set: "&aCell size for &e{arena}&a set to &f{width}x{height}&a (gaps c={cg} r={rg})."
+  board-cleared: "&aCleared board for &e{arena}&a."
+  fee-set: "&aEntry fee for &e{arena}&a set to &e{fee}&a."
+  reloaded: "&aConfiguration reloaded."
+  force-stopped: "&aForce-stopped the game in &e{arena}&a."
+  force-started: "&aForce-started &e{arena}&a."
+  economy-missing: "&cNo economy provider is available for entry fees."
+  not-enough-money: "&cYou need &e{amount}&c but only have &e{balance}&c."
+  look-at-block: "&cLook at a block."
